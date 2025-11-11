@@ -17,8 +17,7 @@ const CNST={INST_COUNT:"undefined"==typeof INSTANCE_COUNT?3:INSTANCE_COUNT,HIST_
  * Tämä käyttäjäskripti ylikirjoittaa 1. ohjauksen lähdön tarvittaessa
  * P1 sähkömittarin kokonaiskulutuksen minuutin keskiarvon perusteella.
  * 
- * Idea on, että jos kulutusta on jo 6kw ei anneta sähköjen mennä päälle, ettei oteta liikaa virtaa verkosta kun sulakkeet on 3x25A.
- *
+ * Idea on, että jos kulutusta on jo 4,5kw ei anneta sähköjen mennä päälle, ettei oteta liikaa virtaa verkosta.
  */
  
 function USER_OVERRIDE(inst, cmd, callback) {
@@ -30,16 +29,59 @@ function USER_OVERRIDE(inst, cmd, callback) {
     return;
   }
   try {
-//    console.log("Suoritetaan USER_OVERRIDE. Ohjauksen tila ennen: ", cmd); 
-    if (apw >= 6000) {
-      console.log("Keskiarvoteho " + apw + " yli raja-arvon, muutetaan ohjausta.");
-      // koska oma rele on aina päällä mallia, on signaalit toisinpäin.
-      cmd = false;
+    // Hysteresis thresholds
+//    var lower_limit = 3500;   // how much can be in use
+//    var upper_limit = 14000;  // max load before turning charger off
+//    console.log("Lower limit: " + lower_limit);
+//    console.log("Upper limit: " + upper_limit);
+//cmd true tarkottaa ok hinnan puolesta
+//apw = 400;
+//cmd = true;
+/*
+    if (cmd) {
+      if (apw > upper_limit) {
+        console.log("Apw " + apw + " over upper limit " + upper_limit + ", Charger goes off.");
+        cmd = false;
+      } else if (apw <= lower_limit) {
+        console.log("Apw " + apw + " under lower limit " + lower_limit + ", no override.");
+        } else {
+        console.log("Apw " + apw + " over lower limit " + lower_limit + ", Charger won't start.");
+        cmd = false;        
+      }
     } else {
-      console.log("Keskiarvoteho " + apw + " alle raja-arvon, ei muutosta.");      
+        console.log("Outside price window, no changes.");  
     }
-//    console.log("USER_OVERRIDE suoritettu. Ohjauksen tila nyt: ", cmd);
     callback(cmd);
+*/
+  var charger_on = false;
+  var charger = 11000;
+  var limit = 4000;
+//  apw = 4000;
+//  charger_on = false;
+    if (cmd) {
+      if (charger_on) {
+        if (apw >= charger + limit) {
+          console.log("Apw " + apw + " usage over or at limit " + (charger + limit) + ", charger goes OFF.");
+          cmd = false;
+          charger_on = false;
+          }
+        else {
+          console.log("Apw " + apw + " usage under limit " + (charger + limit) + ", charger stays ON.");
+          } 
+        }
+      else {
+        if (apw < limit) {
+          console.log("Apw " + apw + " usage under limit " + limit + ", charger goes ON.");
+          charger_on = true;
+          }
+        else {          
+          console.log("Apw " + apw + " usage over or at limit " + limit + ", charger stays OFF.");
+          cmd = false;
+          }
+        }
+    } 
+    callback(cmd);
+    
   } catch (err) {
     console.log("Virhe tapahtui USER_OVERRIDE-funktiossa. Virhe:", err);
     state.si[inst].str = "Ohjauksen virhe:" + err;
@@ -69,7 +111,7 @@ function makeAveragerWithReset(maxCount) {
 }
 
 function fetchActivePower() {
-  let req = { url: "http://<P1 mittarin IP>/api/v1/data", timeout: 5 };
+  let req = { url: "http://192.168.255.122/api/v1/data", timeout: 5 };
   //console.log("Haetaan P1-dataa:", req.url);
   Shelly.call("HTTP.GET", req, function (res, err, msg) {
     try {
@@ -91,11 +133,16 @@ function fetchActivePower() {
 }
 
 function USER_LOOP() {  
+//  console.log("USER_LOOP");  
   fetchActivePower();
+  if (apw > 16500) {
+    console.log("Apw:" + apw + " over limit 16,5k, charger goes OFF.");
+    Shelly.call("Switch.Set", {id: 0, on: true });    
+  }
   averager(apw);
 //  console.log("Average power: " + averager(apw));
   loopRunning = false;
 }
 //muuttuja average power watts apw ja averager funkito joka laskee keskiarvon määritellyn ikkunan mukaan, oletus 6 on 6x10 sek eli minuutin sisällä
-var apw = null;
+var apw = 500;
 averager = makeAveragerWithReset(6);
