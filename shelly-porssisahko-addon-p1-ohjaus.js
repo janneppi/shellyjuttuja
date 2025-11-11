@@ -17,7 +17,8 @@ const CNST={INST_COUNT:"undefined"==typeof INSTANCE_COUNT?3:INSTANCE_COUNT,HIST_
  * Tämä käyttäjäskripti ylikirjoittaa 1. ohjauksen lähdön tarvittaessa
  * P1 sähkömittarin kokonaiskulutuksen minuutin keskiarvon perusteella.
  * 
- * Idea on, että jos kulutusta on jo 4,5kw ei anneta sähköjen mennä päälle, ettei oteta liikaa virtaa verkosta.
+ * Idea on, että jos kulutusta on jo riittävästi ei anneta sähköjen mennä päälle, ettei oteta liikaa virtaa verkosta.
+ * Myös user loopissa on vahti ettei ottoteho kasva liian isoksi.
  */
  
 function USER_OVERRIDE(inst, cmd, callback) {
@@ -29,30 +30,6 @@ function USER_OVERRIDE(inst, cmd, callback) {
     return;
   }
   try {
-    // Hysteresis thresholds
-//    var lower_limit = 3500;   // how much can be in use
-//    var upper_limit = 14000;  // max load before turning charger off
-//    console.log("Lower limit: " + lower_limit);
-//    console.log("Upper limit: " + upper_limit);
-//cmd true tarkottaa ok hinnan puolesta
-//apw = 400;
-//cmd = true;
-/*
-    if (cmd) {
-      if (apw > upper_limit) {
-        console.log("Apw " + apw + " over upper limit " + upper_limit + ", Charger goes off.");
-        cmd = false;
-      } else if (apw <= lower_limit) {
-        console.log("Apw " + apw + " under lower limit " + lower_limit + ", no override.");
-        } else {
-        console.log("Apw " + apw + " over lower limit " + lower_limit + ", Charger won't start.");
-        cmd = false;        
-      }
-    } else {
-        console.log("Outside price window, no changes.");  
-    }
-    callback(cmd);
-*/
 
   var charger = 11000;
   var limit = 4000;
